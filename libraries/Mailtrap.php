@@ -2,142 +2,145 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
- * 
+ *
  * @author Jaikora <kora.jayaram@gmail.com>
  */
+class Mailtrap_Exception extends Exception
+{
+}
 
-class Mailtrap_Exception extends Exception {}
+class Mailtrap
+{
 
-class Mailtrap {
+	const API_VERSION = 'v1';
+	const END_POINT = 'https://mailtrap.io/api/';
+	const WP_DEBUG = true;
 
-  const API_VERSION = 'v1';
-  const END_POINT = 'https://mailtrap.io/api/';
-  const WP_DEBUG = true;
+	var $api;
+	var $output;
+	var $ci;
 
-  var $api;
-  var $output;
-  var $ci;
+	public function __construct()
+	{
+		$this->ci =& get_instance();
 
-  public function __construct()
-  {
-    $this->ci =& get_instance();
+		log_message('info', "Mailtrap library loaded");
 
-    $this->ci->load->config('mailtrap');
+		$this->ci->load->config('mailtrap');
 
-    //$mailtrap = false;
-    try {
-      $this->init($this->ci->config->item('mailtrap_api_key'));
-      //$mailtrap= true;
-    } catch (Mailtrap_Exception $e) {
-      var_dump( $e ); die();
-    }
-  }
+		//$mailtrap = false;
+		try {
+			$this->init($this->ci->config->item('mailtrap_api_key'));
+			//$mailtrap= true;
+		} catch (Mailtrap_Exception $e) {
+			var_dump($e);
+			die();
+		}
+	}
 
-  function init($api)
-  {
-    if ( empty($api) )
-      throw new Mailtrap_Exception('Invalid API token key');
+	function init($api)
+	{
+		if (empty($api)) {
+			throw new Mailtrap_Exception('Invalid API token key');
+		}
 
-    try {
-      $response = $this->request('user', array( 'api_token' => $api ),'GET' );
-      if ( !isset($response['billing_subscription_status']) || $response['billing_subscription_status'] != 'active' )
-        throw new Mailtrap_Exception('Invalid API key or account not active');
+		try {
+			$response = $this->request('user', array ('api_token' => $api), 'GET');
+			if (!isset($response['billing_subscription_status']) || $response['billing_subscription_status'] != 'active') {
+				throw new Mailtrap_Exception('Invalid API key or account not active');
+			}
 
-      $this->api = $api;
-    } catch ( Exception $e ) {
-      throw new Mailtrap_Exception($e->getMessage());
-    }
-  }
+			$this->api = $api;
+		} catch (Exception $e) {
+			throw new Mailtrap_Exception($e->getMessage());
+		}
+	}
 
-  ### example functions user functions
+	### The following is a section of resources related to the user.
 
-  public function getUser()
-  {
-    return ($this->request('user', array(), 'GET'));
-  }
+	public function getUser()
+	{
+		return ($this->request('user', array (), 'GET'));
+	}
 
-  public function patchUser($name, $email)
-  {
-    return $this->request('user', compact('name','email'), 'PATCH');
-  }
+	public function patchUser($name, $email)
+	{
+		return $this->request('user', compact('name', 'email'), 'PATCH');
+	}
 
-  public function deleteUser()
-  {
-    return $this->request('user/reset_api_token', array(), 'DELETE');
-  }
+	public function deleteUser()
+	{
+		return $this->request('user/reset_api_token', array (), 'DELETE');
+	}
 
-  ###  Inboxes
+	### The following is a section of resources related to the inbox
 
-  public function getInboxes()
-  {
-    return $this->request('inboxes', array(), 'GET');
-  }
+	public function getInboxes()
+	{
+		return $this->request('inboxes', array (), 'GET');
+	}
 
-  public function getInboxById($id)
-  {
-    return $this->request('inboxes', compact('id'), 'GET');
-  }
+	public function getInbox($id)
+	{
+		return $this->request('inboxes', compact('id'), 'GET');
+	}
 
-  //inboxes/{inbox_id}/clean
-  public function patchInboxByIdClean($inbox_id)
-  {
-    return $this->request('inboxes/{inbox_id}/clean', compact('inbox_id'), 'PATCH');
-  }
+	//inboxes/{inbox_id}/clean
+	public function patchInboxClean($inbox_id)
+	{
+		return $this->request('inboxes/{inbox_id}/clean', compact('inbox_id'), 'PATCH');
+	}
 
-  //inboxes/{inbox_id}/all_read
-  public function patchInboxByIdAsRead($inbox_id)
-  {
-    return $this->request('inboxes/{inbox_id}/all_read', compact('inbox_id'), 'PATCH');
-  }
+	//inboxes/{inbox_id}/all_read
+	public function patchInboxAsRead($inbox_id)
+	{
+		return $this->request('inboxes/{inbox_id}/all_read', compact('inbox_id'), 'PATCH');
+	}
 
-  ### Messages
+	### The following is a section of resources related to the message
 
-  public function getMessages($inbox_id, $pages=1)
-  {
-    return $this->request('inboxes/'.$inbox_id.'/messages', compact('pages'), 'GET');
-  }
+	public function getMessages($inbox_id, $pages = 1)
+	{
+		return $this->request('inboxes/' . $inbox_id . '/messages', compact('pages'), 'GET');
+	}
 
-  public function getMessageById($inbox_id, $id)
-  {
-    $this->checkValues(func_get_args(), __FUNCTION__);
-    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id, array(), 'GET');
-  }
+	public function getMessageById($inbox_id, $message_id)
+	{
+		$this->checkValues(func_get_args(), __FUNCTION__);
+		return $this->request('inboxes/' . $inbox_id . '/messages/' . $message_id, array(), 'GET');
+	}
 
-  public function patchMessageAsRead($inbox_id, $id)
-  {
-    $this->checkValues(func_get_args(),__FUNCTION__);
-    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id, array('message'=>array('is_read'=>true)), 'PATCH');
-  }
+	public function patchMessageAsRead($inbox_id, $message_id)
+	{
+		$this->checkValues(func_get_args(), __FUNCTION__);
+		return $this->request('inboxes/' . $inbox_id . '/messages/' . $message_id,
+			  array ('message' => array ('is_read' => true)), 'PATCH');
+	}
 
-  public function deleteMessageById($inbox_id, $id)
-  {
-    $this->checkValues(func_get_args(), __FUNCTION__);
-    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id, array(), 'DELETE');
-  }
+	public function deleteMessageById($inbox_id, $message_id)
+	{
+		$this->checkValues(func_get_args(), __FUNCTION__);
+		return $this->request('inboxes/' . $inbox_id . '/messages/' . $message_id, array (), 'DELETE');
+	}
 
-  ### Body
+	### Body
 
-  // type : html,raw,txt,eml
-  public function getMessageBody($inbox_id, $id, $type)
-  {
-    $this->checkValues(func_get_args(),__FUNCTION__);
-    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id.'/body', array(), 'GET', $type);
-  }
+	// type : html, raw, txt, eml
+	public function getMessageBody($inbox_id, $message_id, $type = 'html')
+	{
+		$this->checkValues(func_get_args(), __FUNCTION__);
+		return $this->request('inboxes/' . $inbox_id . '/messages/' . $message_id . '/body', array (), 'GET', $type);
+	}
 
-  public function getMessageBodyText($inbox_id, $id)
-  {
-    $this->checkValues(func_get_args(),__FUNCTION__);
-    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id.'/body',array(),'GET');
-  }
 
-  private static function checkValues($values, $name)
-  {
-    foreach($values as $value)
-    {
-      if(is_null($value) || $value=='')
-        throw new Mailtrap_Exception('Invalid function values in ::'.$name);
-    }
-  }
+	private static function checkValues($values, $name)
+	{
+		foreach ($values as $value) {
+			if (is_null($value) || $value == '') {
+				throw new Mailtrap_Exception('Invalid function values in ::' . $name);
+			}
+		}
+	}
 
 	/**
 	 * Work horse. Every API call use this function to actually make the request to Mailtraps's servers.
@@ -150,10 +153,11 @@ class Mailtrap {
 	 * @param string $output API response format (json,php,xml,yaml). json and xml are decoded into arrays automatically.
 	 * @return array|string|Mailtrap_Exception
 	 */
-	function request($method, $args = array(), $http = 'POST', $output = 'json')
+	function request($method, $args = array (), $http = 'POST', $output = 'json')
 	{
-		if( !isset($args['api_token']) )
+		if (!isset($args['api_token'])) {
 			$args['api_token'] = $this->api;
+		}
 
 		$this->output = $output;
 
@@ -167,7 +171,7 @@ class Mailtrap {
 			case 'GET':
 				//some distribs change arg sep to &amp; by default
 				$sep_changed = false;
-				if (ini_get("arg_separator.output")!="&"){
+				if (ini_get("arg_separator.output") != "&") {
 					$sep_changed = true;
 					$orig_sep = ini_get("arg_separator.output");
 					ini_set("arg_separator.output", "&");
@@ -175,11 +179,11 @@ class Mailtrap {
 
 				$url .= '?' . http_build_query($args);
 
-				if ($sep_changed){
+				if ($sep_changed) {
 					ini_set("arg_separator.output", $orig_sep);
 				}
 
-				$response = $this->http_request($url, array(),'GET');
+				$response = $this->http_request($url, array (), 'GET');
 				break;
 
 			case 'POST':
@@ -189,7 +193,7 @@ class Mailtrap {
 			case 'PATCH':
 				// replace url by value
 				$sep_changed = false;
-				if (ini_get("arg_separator.output")!="&"){
+				if (ini_get("arg_separator.output") != "&") {
 					$sep_changed = true;
 					$orig_sep = ini_get("arg_separator.output");
 					ini_set("arg_separator.output", "&");
@@ -197,7 +201,7 @@ class Mailtrap {
 
 				$url .= '?' . http_build_query($args);
 
-				if ($sep_changed){
+				if ($sep_changed) {
 					ini_set("arg_separator.output", $orig_sep);
 				}
 
@@ -212,8 +216,8 @@ class Mailtrap {
 				throw new Mailtrap_Exception('Unknown request type');
 		}
 
-		$response_code  = $response['header']['http_code'];
-		$body           = $response['body'];
+		$response_code = $response['header']['http_code'];
+		$body = $response['body'];
 
 		switch ($output) {
 
@@ -237,56 +241,59 @@ class Mailtrap {
 				$body = $body;
 		}
 
-		if( 200 == $response_code || 201 == $response_code ) {
+		if (200 == $response_code || 201 == $response_code) {
 			return $body;
-		}
-		else {
+		} else {
 			//$message = isset( $body['message'] ) ? $body['message'] : '' ;
 			$message = '';
-			switch($response_code){
+			switch ($response_code) {
 				case '404':
-					$message= 'Not Found - resource was not found.';
+					$message = 'Not Found - resource was not found.';
 					break;
 				case '204':
-					$message ='No Content - the request was successful but there is no representation to return (i.e. the response is empty).';
+					$message = 'No Content - the request was successful but there is no representation to return (i.e. the response is empty).';
 					break;
 				case '400':
-					$message ='Bad Request - the request could not be understood or was missing required parameters.';
+					$message = 'Bad Request - the request could not be understood or was missing required parameters.';
 					break;
 				case '401':
-					$message ='Unauthorized - authentication failed or user doesnt have permissions for requested operation.';
+					$message = 'Unauthorized - authentication failed or user doesnt have permissions for requested operation.';
 					break;
 				case '403':
-					$message ='Forbidden - access denied.';
+					$message = 'Forbidden - access denied.';
 					break;
 				case '404':
-					$message ='Not Found - resource was not found.';
+					$message = 'Not Found - resource was not found.';
 					break;
 				case '405':
-					$message ='Method Not Allowed - requested method is not supported for resource.';
+					$message = 'Method Not Allowed - requested method is not supported for resource.';
 					break;
 				case '422':
-					$message ='Unprocessable Entity - requested data contain invalid values.';
+					$message = 'Unprocessable Entity - requested data contain invalid values.';
 					break;
 				case '429':
-					$message ='Too Many Requests - exceeded Mailtrap API limits. Pause requests, wait up to one minute, and try again.';
+					$message = 'Too Many Requests - exceeded Mailtrap API limits. Pause requests, wait up to one minute, and try again.';
 					break;
 				default:
-					$message= 'something went wrong !!';
+					$message = 'something went wrong !!';
 			}
 
-			throw new Mailtrap_Exception($response_code.'-'.$message);
+			throw new Mailtrap_Exception($response_code . '-' . $message);
 		}
 	}
 
-	function http_request($url, $fields = array(), $method = 'POST')
+	function http_request($url, $fields = array (), $method = 'POST')
 	{
-		if ( !in_array( $method, array('POST','GET','PATCH','DELETE') ) ) $method = 'POST';
-		if ( !isset( $fields['api_token']) ) $fields['api_token'] = $this->api;
+		if (!in_array($method, array ('POST', 'GET', 'PATCH', 'DELETE'))) {
+			$method = 'POST';
+		}
+		if (!isset($fields['api_token'])) {
+			$fields['api_token'] = $this->api;
+		}
 
 		//some distribs change arg sep to &amp; by default
 		$sep_changed = false;
-		if (ini_get("arg_separator.output")!="&"){
+		if (ini_get("arg_separator.output") != "&") {
 			$sep_changed = true;
 			$orig_sep = ini_get("arg_separator.output");
 			ini_set("arg_separator.output", "&");
@@ -298,13 +305,13 @@ class Mailtrap {
 			ini_set("arg_separator.output", $orig_sep);
 		}
 
-		if ( defined('WP_DEBUG') && WP_DEBUG !== false ) {
-			error_log( "\nMailtrap::http_request: URL: $url - Fields: $fields\n" );
+		if (defined('WP_DEBUG') && WP_DEBUG !== false) {
+			error_log("\nMailtrap::http_request: URL: $url - Fields: $fields\n");
 		}
 
-		if( function_exists('curl_init') && function_exists('curl_exec') ) {
+		if (function_exists('curl_init') && function_exists('curl_exec')) {
 
-			if( !ini_get('safe_mode') ){
+			if (!ini_get('safe_mode')) {
 				set_time_limit(2 * 60);
 			}
 			$ch = curl_init();
@@ -324,32 +331,31 @@ class Mailtrap {
 			// Patch
 			//curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PATCH");
 			//curl_setopt($ch, CURLOPT_POSTFIELDS, "{\n    \"user\": {\n        \"name\": \"James Bond\"\n    }\n}");
-			if($method == 'PATCH')
-			{
+			if ($method == 'PATCH') {
 				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PATCH");
-				if(count($fields)>1)
-				curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
+				if (count($fields) > 1) {
+					curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
+				}
 			}
 
-			curl_setopt($ch, CURLOPT_HTTPHEADER, array('Expect:'));
+			curl_setopt($ch, CURLOPT_HTTPHEADER, array ('Expect:'));
 			curl_setopt($ch, CURLOPT_HEADER, false);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
 			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2 * 60 * 1000);
 
-			$response   = curl_exec($ch);
-			$info       = curl_getinfo($ch);
-			$error      = curl_error($ch);
+			$response = curl_exec($ch);
+			$info = curl_getinfo($ch);
+			$error = curl_error($ch);
 
 			curl_close($ch);
 
 
-
-		} elseif( function_exists( 'fsockopen' ) ) {
+		} elseif (function_exists('fsockopen')) {
 			$parsed_url = parse_url($url);
 
 			$host = $parsed_url['host'];
-			if ( isset($parsed_url['path']) ) {
+			if (isset($parsed_url['path'])) {
 				$path = $parsed_url['path'];
 			} else {
 				$path = '/';
@@ -358,7 +364,7 @@ class Mailtrap {
 			$params = '';
 			if (isset($parsed_url['query'])) {
 				$params = $parsed_url['query'] . '&' . $fields;
-			} elseif ( trim($fields) != '' ) {
+			} elseif (trim($fields) != '') {
 				$params = $fields;
 			}
 
@@ -370,21 +376,21 @@ class Mailtrap {
 
 			$response = false;
 
-			$errno    = '';
-			$errstr   = '';
+			$errno = '';
+			$errstr = '';
 			ob_start();
-			$fp = fsockopen( 'ssl://'.$host, $port, $errno, $errstr, 5 );
+			$fp = fsockopen('ssl://' . $host, $port, $errno, $errstr, 5);
 
-			if( $fp !== false ) {
+			if ($fp !== false) {
 				stream_set_timeout($fp, 30);
 
 				$payload = "$method $path HTTP/1.0\r\n" .
-						"Host: $host\r\n" .
-						"Connection: close\r\n"  .
-						"Content-type: application/x-www-form-urlencoded\r\n" .
-						"Content-length: " . strlen($params) . "\r\n" .
-						"Connection: close\r\n\r\n" .
-						$params;
+					  "Host: $host\r\n" .
+					  "Connection: close\r\n" .
+					  "Content-type: application/x-www-form-urlencoded\r\n" .
+					  "Content-length: " . strlen($params) . "\r\n" .
+					  "Connection: close\r\n\r\n" .
+					  $params;
 				fwrite($fp, $payload);
 				stream_set_timeout($fp, 30);
 
@@ -394,24 +400,26 @@ class Mailtrap {
 					$info = stream_get_meta_data($fp);
 				}
 
-				fclose( $fp );
+				fclose($fp);
 				ob_end_clean();
 
 				list($headers, $response) = explode("\r\n\r\n", $response, 2);
 
-				if(ini_get("magic_quotes_runtime")) $response = stripslashes($response);
-				$info = array('http_code' => 200);
+				if (ini_get("magic_quotes_runtime")) {
+					$response = stripslashes($response);
+				}
+				$info = array ('http_code' => 200);
 			} else {
 				ob_end_clean();
-				$info = array('http_code' => 500);
-				throw new Exception($errstr,$errno);
+				$info = array ('http_code' => 500);
+				throw new Exception($errstr, $errno);
 			}
 			$error = '';
 		} else {
 			throw new Mailtrap_Exception("No valid HTTP transport found", -99);
 		}
 
-		return array('header' => $info, 'body' => $response, 'error' => $error);
+		return array ('header' => $info, 'body' => $response, 'error' => $error);
 	}
 
 }
