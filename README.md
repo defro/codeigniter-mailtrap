@@ -7,26 +7,20 @@ MailTrap documentation : http://docs.mailtrap.apiary.io/
 
 ## Installation
 
-Copy files from respective folders to relevant codeigniter repo.
+Use Composer to install this package as a requirement like this : composer require defro/codeigniter-mailtrap
+
+Load this package by adding it to your application/config/autoload.php file like this :
+
+`$autoload['packages'] = array(
+    FCPATH . 'vendor/defro/codeigniter-mailtrap/'
+);`
+
+or include it with Loader library
+
+`$this->load->add_package_path(FCPATH . 'vendor/joel-depiltech/codeigniter-mailtrap');`
 
 ## Usage
-
-In your codeigniter Controller. 
-### load lib
-$this->load->library('mailtrap');
-### call functions 
-$this->mailtrap->getInboxById(42030)
-
-## Contributing
-
-1. Fork it!
-2. Submit a pull request :D
-
-## History
-
-TODO: Write history
-
-## Credits
-
-Kora.jayaram@gmail.com
-
+In your codeigniter Controller, load library
+`$this->load->library('mailtrap');`
+and call some methods
+`$this->mailtrap->getUser();`
