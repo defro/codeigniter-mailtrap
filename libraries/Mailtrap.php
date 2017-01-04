@@ -1,153 +1,143 @@
 <?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
 /**
  * 
  * @author Jaikora <kora.jayaram@gmail.com>
  */
 
 class Mailtrap_Exception extends Exception {}
+
 class Mailtrap {
 
-	
-	const API_VERSION = 'v1';
-	const END_POINT = 'https://mailtrap.io/api/';
-	//const END_POINT = 'https://private-anon-92a16a151-mailtrap.apiary-mock.com/';
-	const WP_DEBUG = true;
+  const API_VERSION = 'v1';
+  const END_POINT = 'https://mailtrap.io/api/';
+  const WP_DEBUG = true;
 
-	var $ci;
+  var $api;
+  var $output;
+  var $ci;
 
-	public function __construct()
-	{
-		$this->ci =& get_instance();
+  public function __construct()
+  {
+    $this->ci =& get_instance();
 
-	    $this->ci->load->config('mailtrap');
+    $this->ci->load->config('mailtrap');
 
-		//$mailtrap = false;
-		try {
-			$this->init($this->ci->config->item('mailtrap_api_key'));
-			//$mailtrap= true;
-		} catch (Mailtrap_Exception $e) {
-			var_dump( $e ); die();
-		}
+    //$mailtrap = false;
+    try {
+      $this->init($this->ci->config->item('mailtrap_api_key'));
+      //$mailtrap= true;
+    } catch (Mailtrap_Exception $e) {
+      var_dump( $e ); die();
+    }
+  }
 
-	}
+  function init($api)
+  {
+    if ( empty($api) )
+      throw new Mailtrap_Exception('Invalid API token key');
 
+    try {
+      $response = $this->request('user', array( 'api_token' => $api ),'GET' );
+      if ( !isset($response['billing_subscription_status']) || $response['billing_subscription_status'] != 'active' )
+        throw new Mailtrap_Exception('Invalid API key or account not active');
 
+      $this->api = $api;
+    } catch ( Exception $e ) {
+      throw new Mailtrap_Exception($e->getMessage());
+    }
+  }
 
-	var $api;
-	var $output;
+  ### example functions user functions
 
+  public function getUser()
+  {
+    return ($this->request('user', array(), 'GET'));
+  }
 
-	function init($api) {
-		if ( empty($api) ) throw new Mailtrap_Exception('Invalid API token key');
-		try {
-			$response = $this->request('user', array( 'api_token' => $api ),'GET' );
-			if ( !isset($response['billing_subscription_status']) || $response['billing_subscription_status'] != 'active' ) throw new Mailtrap_Exception('Invalid API key  or account not active');
+  public function patchUser($name, $email)
+  {
+    return $this->request('user', compact('name','email'), 'PATCH');
+  }
 
-			$this->api = $api;
+  public function deleteUser()
+  {
+    return $this->request('user/reset_api_token', array(), 'DELETE');
+  }
 
-		} catch ( Exception $e ) {
-			throw new Mailtrap_Exception($e->getMessage());
-		}
-	}
+  ###  Inboxes
 
+  public function getInboxes()
+  {
+    return $this->request('inboxes', array(), 'GET');
+  }
 
-	### example functions user functions
+  public function getInboxById($id)
+  {
+    return $this->request('inboxes', compact('id'), 'GET');
+  }
 
-	public function  getUser()
-	{
-		return  $this->request('user', array(),'GET' );
-	}
+  //inboxes/{inbox_id}/clean
+  public function patchInboxByIdClean($inbox_id)
+  {
+    return $this->request('inboxes/{inbox_id}/clean', compact('inbox_id'), 'PATCH');
+  }
 
-	public function patchUser($name,$email)
-	{
-		return $this->request('user', compact('name','email'),'PATCH' );
-	}
+  //inboxes/{inbox_id}/all_read
+  public function patchInboxByIdAsRead($inbox_id)
+  {
+    return $this->request('inboxes/{inbox_id}/all_read', compact('inbox_id'), 'PATCH');
+  }
 
-	public function deleteUser()
-	{
-		return $this->request('user/reset_api_token',array(),'DELETE');
-	}
+  ### Messages
 
-	###  Inbox s
+  public function getMessages($inbox_id, $pages=1)
+  {
+    return $this->request('inboxes/'.$inbox_id.'/messages', compact('pages'), 'GET');
+  }
 
-	public function getInboxes()
-	{
-		return $this->request('inboxes',array(),'GET');
-	}
+  public function getMessageById($inbox_id, $id)
+  {
+    $this->checkValues(func_get_args(), __FUNCTION__);
+    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id, array(), 'GET');
+  }
 
-	public function getInboxById($id)
-	{
-		return $this->request('inboxes',compact('id'),'GET');
-	}
+  public function patchMessageAsRead($inbox_id, $id)
+  {
+    $this->checkValues(func_get_args(),__FUNCTION__);
+    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id, array('message'=>array('is_read'=>true)), 'PATCH');
+  }
 
-	//inboxes/{inbox_id}/clean
-	public function patchInboxByIdClean ($inbox_id)
-	{
-		return $this->request('inboxes/{inbox_id}/clean',compact('inbox_id'),'PATCH');
-	}
+  public function deleteMessageById($inbox_id, $id)
+  {
+    $this->checkValues(func_get_args(), __FUNCTION__);
+    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id, array(), 'DELETE');
+  }
 
-	//inboxes/{inbox_id}/all_read
-	public function patchInboxByIdAsRead($inbox_id)
-	{
+  ### Body
 
-		return $this->request('inboxes/{inbox_id}/all_read',compact('inbox_id'),'PATCH');
-	}
-	
-	
-	### Messages 
+  // type : html,raw,txt,eml
+  public function getMessageBody($inbox_id, $id, $type)
+  {
+    $this->checkValues(func_get_args(),__FUNCTION__);
+    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id.'/body', array(), 'GET', $type);
+  }
 
-	public function getMessages($inbox_id,$pages=1)
-	{
-		return $this->request('inboxes/'.$inbox_id.'/messages',compact('pages'),'GET');
-	}
+  public function getMessageBodyText($inbox_id, $id)
+  {
+    $this->checkValues(func_get_args(),__FUNCTION__);
+    return $this->request('inboxes/'.$inbox_id.'/messages/'.$id.'/body',array(),'GET');
+  }
 
-	public function getMessageById($inbox_id,$id)
-	{
-		$this->checkValues(func_get_args(),__FUNCTION__);
-		return $this->request('inboxes/'.$inbox_id.'/messages/'.$id,array(),'GET');
-	}
-
-	public function patchMessageAsRead($inbox_id,$id)
-	{
-		$this->checkValues(func_get_args(),__FUNCTION__);
-
-		return $this->request('inboxes/'.$inbox_id.'/messages/'.$id,array('message'=>array('is_read'=>true)),'PATCH');
-	}
-
-	public function deleteMessageById($inbox_id,$id)
-	{
-		$this->checkValues(func_get_args(),__FUNCTION__);
-		return $this->request('inboxes/'.$inbox_id.'/messages/'.$id,array(),'DELETE');
-	}
-	
-	### Body 
-
-	// type : html,raw,txt,eml
-	public function getMessageBody($inbox_id,$id,$type)
-	{
-		$this->checkValues(func_get_args(),__FUNCTION__);
-		return $this->request('inboxes/'.$inbox_id.'/messages/'.$id.'/body',array(),'GET',$type);
-	}
-
-	public function getMessageBodyText($inbox_id,$id)
-	{
-		$this->checkValues(func_get_args(),__FUNCTION__);
-		return $this->request('inboxes/'.$inbox_id.'/messages/'.$id.'/body',array(),'GET');
-	}
-
-
-	private static function checkValues($values,$name ){
-
-		foreach($values as $value)
-		{
-			if(is_null($value) || $value==''){ throw new Mailtrap_Exception('Invalid function values in ::'.$name); }
-		}
-
-	}
-
-
-
-
+  private static function checkValues($values, $name)
+  {
+    foreach($values as $value)
+    {
+      if(is_null($value) || $value=='')
+        throw new Mailtrap_Exception('Invalid function values in ::'.$name);
+    }
+  }
 
 	/**
 	 * Work horse. Every API call use this function to actually make the request to Mailtraps's servers.
@@ -162,12 +152,6 @@ class Mailtrap {
 	 */
 	function request($method, $args = array(), $http = 'POST', $output = 'json')
 	{
-		echo $method.'<br/>';
-		//echo $method.'<br/>';
-		echo $http.'<br/>';
-		var_dump($args);
-		echo "<br/>";
-
 		if( !isset($args['api_token']) )
 			$args['api_token'] = $this->api;
 
@@ -201,8 +185,8 @@ class Mailtrap {
 			case 'POST':
 				$response = $this->http_request($url, $args, 'POST');
 				break;
-			case 'PATCH':
 
+			case 'PATCH':
 				// replace url by value
 				$sep_changed = false;
 				if (ini_get("arg_separator.output")!="&"){
@@ -219,46 +203,46 @@ class Mailtrap {
 
 				$response = $this->http_request($url, $args, 'PATCH');
 				break;
+
 			case 'DELETE':
 				$response = $this->http_request($url, $args, 'DELETE');
 				break;
+
 			default:
 				throw new Mailtrap_Exception('Unknown request type');
 		}
+
 		$response_code  = $response['header']['http_code'];
 		$body           = $response['body'];
 
 		switch ($output) {
 
 			case 'json':
-
 				$body = json_decode($body, true);
 				break;
 
 			case 'php':
-
 				$body = unserialize($body);
 				break;
+
 			case 'txt':
-
 				$body = $body;
 				break;
+
 			case 'html':
-
 				$body = $body;
 				break;
+
 			default:
 				$body = $body;
 		}
 
 		if( 200 == $response_code || 201 == $response_code ) {
-
 			return $body;
 		}
 		else {
-
 			//$message = isset( $body['message'] ) ? $body['message'] : '' ;
-			$message ='';
+			$message = '';
 			switch($response_code){
 				case '404':
 					$message= 'Not Found - resource was not found.';
@@ -295,12 +279,8 @@ class Mailtrap {
 		}
 	}
 
-
-
-
 	function http_request($url, $fields = array(), $method = 'POST')
 	{
-
 		if ( !in_array( $method, array('POST','GET','PATCH','DELETE') ) ) $method = 'POST';
 		if ( !isset( $fields['api_token']) ) $fields['api_token'] = $this->api;
 
@@ -327,9 +307,6 @@ class Mailtrap {
 			if( !ini_get('safe_mode') ){
 				set_time_limit(2 * 60);
 			}
- var_dump($url);
-//$url = "https://private-anon-0f8163dd0-mailtrap.apiary-mock.com/api/v1/inboxes/{inbox_id}/all_read?&inbox_id=42030";
-			//$url= "https://mailtrap.io/api/v1/inboxes/42030/all_read?inbox_id=42030&api_token=81bd3061d97ba37d09377381b4b2c3ac";
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $url);
 
@@ -436,4 +413,5 @@ class Mailtrap {
 
 		return array('header' => $info, 'body' => $response, 'error' => $error);
 	}
+
 }
