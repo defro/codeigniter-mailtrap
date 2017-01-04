@@ -1,0 +1,14 @@
+{
+    "name": "defro/codeigniter-mailtrap",
+    "description": "Mailtrap package for CodeIgniter PHP Framework",
+    "type": "library",
+    "license": "GPL-3.0+",
+    "authors": [
+        {
+            "name": "Joël Gaujard",
+            "email": "j.gaujard@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
