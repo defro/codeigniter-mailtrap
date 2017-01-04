@@ -1,3 +1,5 @@
+CodeIgniter MailTrap
+====================
 
 # Mailtrap package for CodeIgniter PHP Framework
 
