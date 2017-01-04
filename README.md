@@ -1,13 +1,13 @@
 
-# Mailtrap Codeigniter Libiary
+# Mailtrap package for CodeIgniter PHP Framework
 
-Curl  or fsocket library for Mailtrap api to view email content , udpate  and delete.
+Curl or fsocket library for Mailtrap API to view email content, udpate and delete.
 
-MailTrap DOC : http://docs.mailtrap.apiary.io/
+MailTrap documentation : http://docs.mailtrap.apiary.io/
 
 ## Installation
 
-Copy files from respective foldes to relevant codeigniter repo.
+Copy files from respective folders to relevant codeigniter repo.
 
 ## Usage
 
@@ -30,6 +30,3 @@ TODO: Write history
 
 Kora.jayaram@gmail.com
 
-## License
-
-MIT General 
