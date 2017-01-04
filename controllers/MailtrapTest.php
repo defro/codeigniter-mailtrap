@@ -1,18 +1,29 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+/**
+ * Class MailtrapTest
+ * Just a small example of a controller for testing Mailtrap Library
+ * Copy/Paste this file in your folder application/controllers
+ * Add this route to your application/config/routes.php file : $route['^mailtrap$'] = 'MailtrapTest';
+ * And call this url in your browser : //yourdomain.com/index.php/mailtrap
+ */
 class MailtrapTest extends CI_Controller
 {
 
-	public function mailtrap()
+	public function index()
 	{
-		$this->load->library('mailtrap');
+		$myConfig = array(
+			  'mailtrap_api_token' => 'bd35f89bc30c5f4db5f43c3953da19bd',
+			  'mailtrap_debug' => TRUE
+		);
+		$this->load->library('mailtrap', $myConfig);
 
 		$user = $this->mailtrap->getUser();
-		$this->_my_print_r($user, 'getUser');
+		//$this->_my_print_r($user, 'getUser');
 
 		$inboxes = $this->mailtrap->getInboxes();
-		//$this->_my_print_r($inboxes, 'getInboxes');
+		$this->_my_print_r($inboxes, 'getInboxes');
 
 		if (is_array($inboxes) && !empty($inboxes))
 		{
