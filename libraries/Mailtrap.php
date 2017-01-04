@@ -14,24 +14,29 @@ class Mailtrap
 
 	const API_VERSION = 'v1';
 	const END_POINT = 'https://mailtrap.io/api/';
-	const WP_DEBUG = true;
 
-	var $api;
-	var $output;
-	var $ci;
+	private $_apiToken;
+	private $_isDebugEnabled;
 
-	public function __construct()
+	public function __construct(array $config = array())
 	{
-		$this->ci =& get_instance();
+		$CI =& get_instance();
 
-		log_message('info', "Mailtrap library loaded");
+		log_message('info', "Mailtrap Library class initialized");
 
-		$this->ci->load->config('mailtrap');
+		$CI->load->config('mailtrap');
 
-		//$mailtrap = false;
+		$config = array_merge(
+			  array (
+					'mailtrap_api_token' => $CI->config->item('mailtrap_api_token'),
+					'mailtrap_debug'   => $CI->config->item('mailtrap_debug')
+			  ),
+			  $config
+		);
+
 		try {
-			$this->init($this->ci->config->item('mailtrap_api_key'));
-			//$mailtrap= true;
+			$this->_isDebugEnabled = (bool)$config['mailtrap_debug'];
+			$this->init($config['mailtrap_api_token']);
 		} catch (Mailtrap_Exception $e) {
 			var_dump($e);
 			die();
@@ -49,8 +54,7 @@ class Mailtrap
 			if (!isset($response['billing_subscription_status']) || $response['billing_subscription_status'] != 'active') {
 				throw new Mailtrap_Exception('Invalid API key or account not active');
 			}
-
-			$this->api = $api;
+			$this->_apiToken = $api;
 		} catch (Exception $e) {
 			throw new Mailtrap_Exception($e->getMessage());
 		}
@@ -156,10 +160,8 @@ class Mailtrap
 	function request($method, $args = array (), $http = 'POST', $output = 'json')
 	{
 		if (!isset($args['api_token'])) {
-			$args['api_token'] = $this->api;
+			$args['api_token'] = $this->_apiToken;
 		}
-
-		$this->output = $output;
 
 		$api_version = self::API_VERSION;
 		$dot_output = ('json' == $output) ? '' : ".{$output}";
@@ -244,8 +246,6 @@ class Mailtrap
 		if (200 == $response_code || 201 == $response_code) {
 			return $body;
 		} else {
-			//$message = isset( $body['message'] ) ? $body['message'] : '' ;
-			$message = '';
 			switch ($response_code) {
 				case '404':
 					$message = 'Not Found - resource was not found.';
@@ -275,7 +275,7 @@ class Mailtrap
 					$message = 'Too Many Requests - exceeded Mailtrap API limits. Pause requests, wait up to one minute, and try again.';
 					break;
 				default:
-					$message = 'something went wrong !!';
+					$message = 'Something went wrong ! No valid response code found.';
 			}
 
 			throw new Mailtrap_Exception($response_code . '-' . $message);
@@ -288,7 +288,7 @@ class Mailtrap
 			$method = 'POST';
 		}
 		if (!isset($fields['api_token'])) {
-			$fields['api_token'] = $this->api;
+			$fields['api_token'] = $this->_apiToken;
 		}
 
 		//some distribs change arg sep to &amp; by default
@@ -305,8 +305,8 @@ class Mailtrap
 			ini_set("arg_separator.output", $orig_sep);
 		}
 
-		if (defined('WP_DEBUG') && WP_DEBUG !== false) {
-			error_log("\nMailtrap::http_request: URL: $url - Fields: $fields\n");
+		if ($this->_isDebugEnabled) {
+			log_message('debug', "Mailtrap::http_request: URL: $url - Fields: $fields");
 		}
 
 		if (function_exists('curl_init') && function_exists('curl_exec')) {
